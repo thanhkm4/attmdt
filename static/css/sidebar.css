@@ -1,0 +1,323 @@
+
+/* Sidebar off-canvas */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    width: var(--sidebar-width);
+    height: 100vh;
+
+    background: #fff;
+    border-right: 1px solid #dee2e6;
+
+    transition: transform 0.3s ease;
+
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+}
+
+
+
+/* --- Menu Scroll Wrapper --- */
+.sidebar-menu-wrapper {
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    
+    /* Ẩn thanh scrollbar */
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+.sidebar-menu-wrapper::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+/* =========================================================
+   3. HEADER & FOOTER
+   ========================================================= */
+.sidebar-header, 
+.sidebar-footer {
+    flex-shrink: 1px; /* Không bị co lại khi menu dài */
+}
+
+/* --- Header --- */
+.sidebar-header {
+
+    border-bottom: none;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.sidebar-header i, 
+.sidebar-header span {
+    color: var(--color-gray-600);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* --- Footer --- */
+.sidebar-footer {
+    border-top: 2px solid #dee2e6;
+    background: #fff;
+}
+
+/* =========================================================
+   4. NAVIGATION LINKS (MAIN & SUBMENU)
+   ========================================================= */
+   
+/* --- Main Links --- */
+.sidebar-link {
+    color: #64748b;
+    padding: 12px 12px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    white-space: nowrap;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.sidebar-link:hover {
+    background-color: #f1f5f9;
+    color: var(--color-primary);
+}
+
+.sidebar-link[aria-expanded="true"] {
+    background-color: #e0f2fe;
+    color: var(--color-primary-dark);
+}
+
+/* Icon chính */
+.sidebar-link i:first-child {
+    width: 24px;
+    text-align: center;
+    margin-right: 12px;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* Mũi tên (Chevron) */
+.sidebar-link .bi-chevron-down {
+    margin-left: auto; 
+    transition: transform 0.3s;
+}
+
+/* --- Submenu Links --- */
+.submenu-link {
+    color: #555;
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    border-radius: 8px;
+    margin: 2px;
+}
+
+.submenu-link:hover {
+    color: var(--color-primary);
+    background-color: #f1f5f9;
+    transform: translateX(10px);
+}
+
+.submenu-link i {
+    font-size: 1rem;
+    width: 24px;
+    text-align: center;
+    margin-right: 12px;
+    opacity: 0.8;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+/* =========================================================
+   5. TOGGLE BUTTON
+   ========================================================= */
+.sidebar-toggle {
+    position: absolute;
+    top: 94%;
+    right: -70px;
+    transform: translateY(-50%);
+    width: 45px;
+    height: 45px;
+    border-radius: 30%;
+    box-shadow: 2px 0 8px rgba(0.1,0.1,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    color: var(--color-primary);
+    background: #fff;
+    font-size: 1.3rem;
+    transition: var(--transition-base);
+}
+
+.sidebar-toggle:hover {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+/* =========================================================
+   6. GLOBAL TRANSITION & VISIBILITY RULES
+   (Dùng chung cho cả trạng thái thường và collapsed)
+   ========================================================= */
+.sidebar-link span,
+.sidebar-logo-text,
+.sidebar-footer span,
+.sidebar-link .bi-chevron-down {
+    /* Luôn giữ chữ 1 dòng */
+    white-space: nowrap !important;
+    
+    /* Transition 2 chiều (vào và ra) */
+    transition: all 0.3s ease;
+    
+    /* Trạng thái mặc định */
+    opacity: 1;
+    max-width: 200px;
+    font-size: 1rem;
+    overflow: hidden;
+}
+
+
+/* Áp dụng khi menu được mở */
+.sidebar-footer .dropdown-menu.show {
+    transition: all 0.2s ease; /* 0.2s là tốc độ vừa phải */
+}
+
+/* =========================================================
+   7. COLLAPSED STATE (TRẠNG THÁI THU GỌN)
+   ========================================================= */
+   
+.main-content {
+    margin-left: 0;          /* QUAN TRỌNG */
+    position: relative;
+    z-index: 1;
+}
+
+/* --- Chiều rộng & Toggle --- */
+.sidebar.collapsed {
+    transform: translateX(calc(-1 * (var(--sidebar-width) - var(--sidebar-collapsed-width))));
+    width: var(--sidebar-width); /* giữ width thật */
+}
+
+.sidebar.collapsed .sidebar-toggle i {
+    transform: rotate(180deg);
+}
+
+/* --- Ẩn text và các thành phần thừa --- */
+.sidebar.collapsed .sidebar-link span,
+.sidebar.collapsed .sidebar-logo-text,
+.sidebar.collapsed .sidebar-footer span,
+.sidebar.collapsed .sidebar-footer .icon-user,
+.sidebar.collapsed .bi-chevron-down { 
+    font-size: 0 !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+}
+
+/* --- Căn chỉnh Padding khi thu gọn --- */
+.sidebar.collapsed .sidebar-footer .dropdown > button {
+    transform: translateX(-10px); /* Dịch sang trái 10px */
+}
+.sidebar.collapsed .sidebar-logo-text {
+    padding-left: 0px !important; 
+    padding-right: 0px !important;
+}
+
+.sidebar.collapsed .sidebar-link {
+    padding-left: 22px !important; 
+    padding-right: 0 !important;
+}
+
+.sidebar.collapsed .sidebar-link i:first-child {
+    margin-right: 0 !important;
+    font-size: 1rem;
+}
+
+.sidebar.collapsed .sidebar-footer .d-flex {
+    justify-content: center;
+}
+
+/* --- Xử lý Submenu khi thu gọn --- */
+/* 1. Hiển thị container menu con */
+.sidebar.collapsed .collapse.show {
+    display: block !important;
+    border-radius: 8px;
+}
+
+/* 2. Ẩn chữ Submenu, chỉnh padding */
+.sidebar.collapsed .submenu-link {
+    font-size: 0 !important;
+    padding-left: 15px !important; 
+    justify-content: flex-start !important;
+}
+
+/* 3. Khôi phục kích thước Icon Submenu */
+.sidebar.collapsed .submenu-link i {
+    font-size: 1rem !important;
+    margin-right: 0 !important;
+    width: 24px !important;
+    display: block;
+    text-align: center;
+}
+
+/* 4. Tắt hiệu ứng trượt ngang khi hover icon menu con */
+.sidebar.collapsed .submenu-link:hover {
+    background-color: #e2e8f0;
+    transform: none;
+}
+
+
+/* =========================================================
+   SIDEBAR OVERLAY (Màn hình tối)
+   ========================================================= */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5); /* Màu đen mờ 50% */
+    z-index: 950; /* Nằm dưới Sidebar (1050) nhưng trên nội dung */
+    
+    /* Mặc định ẩn đi */
+    opacity: 0;
+    visibility: hidden;
+    
+    /* Hiệu ứng chuyển cảnh mượt mà */
+    transition: all 0.3s ease;
+    cursor: pointer; /* Để người dùng biết có thể click vào */
+}
+
+/* Khi có class .show-overlay thì hiện lên */
+.sidebar-overlay.show-overlay {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* TÙY CHỌN: Chỉ hiện màn hình tối trên Mobile/Tablet 
+   (Nếu trên Desktop bạn muốn sidebar đẩy nội dung sang phải 
+   thay vì che tối thì dùng đoạn media query này) 
+*/
+/*
+@media (min-width: 992px) {
+    .sidebar-overlay.show-overlay {
+        display: none; 
+    }
+}
+*/

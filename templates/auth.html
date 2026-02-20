@@ -1,0 +1,94 @@
+{% extends "base_auth.html" %}
+
+{% block title %}Xác thực OTP{% endblock %}
+
+{% block content %}
+<div class="min-vh-90 d-flex align-items-center justify-content-center bg-light">
+
+    <div class="card shadow-lg border-0 p-4"
+        style="border-radius: 20px; max-width: 380px; width: 100%;">
+
+        <div class="text-center mb-4">
+            <h3 class="fw-bold mb-1">Xác thực 2 lớp</h3>
+            <p class="text-muted mb-0">
+                Mã OTP đã được gửi về email của bạn
+            </p>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label small text-muted">Nhập mã OTP</label>
+            <input type="text"
+                id="otpInput"
+                class="form-control text-center rounded-3"
+                maxlength="6"
+                style="border-radius: 10px !important;"
+                placeholder="------">
+        </div>
+
+        <button id="verifyBtn"
+            class="btn btn-primary border w-100 rounded-3"
+            style="border-radius: 10px !important; ">
+            Xác nhận
+        </button>
+
+        <div class="text-center mt-1">
+            <button id="resendBtn" class="btn btn-link"
+                style="border-color: #fff;">
+                Gửi lại OTP
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+const csrfToken = "{{ csrf_token() }}";
+
+document.getElementById("verifyBtn").addEventListener("click", async function () {
+
+    const otp = document.getElementById("otpInput").value.trim();
+
+    if (otp.length !== 6) {
+        showMessage("warning","Thông báo","OTP phải đủ 6 số");
+        return;
+    }
+
+    const res = await fetch("/verify-otp-login", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken
+        },
+        body: JSON.stringify({ otp: otp })
+    });
+
+    const data = await res.json();
+
+    if (data.redirect) {
+        window.location.href = data.redirect;
+        return;
+    }
+
+    if (data.success) {
+        window.location.href = data.redirect;
+    } else {
+        showMessage("error","Lỗi", data.message);
+    }
+
+});
+
+document.getElementById("resendBtn").addEventListener("click", async function () {
+
+    await fetch("/send-login-otp", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": csrfToken
+        }
+    });
+
+    showMessage("warning","Thông báo","Đã gửi lại OTP");
+});
+</script>
+
+{% endblock %}

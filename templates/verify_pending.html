@@ -1,0 +1,43 @@
+{% extends "base_auth.html" %}
+{% block title %}Chờ xác thực{% endblock %}
+{% block content %}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 d-flex justify-content-center">
+
+            <div class="card shadow-lg border-0 p-4 text-center"
+                 style="border-radius: 20px; max-width: 380px; width: 100%;">
+
+                <h3 class="mb-3">📧 Xác thực Email</h3>
+
+                <p>Chúng tôi đã gửi email xác thực đến:</p>
+
+                <h5 class="text-primary">
+                    {{ email }}
+                </h5>
+
+                <p class="mt-3 text-muted">
+                    Vui lòng kiểm tra hộp thư và nhấn vào liên kết xác thực.
+                </p>
+
+                <hr>
+
+                <form method="POST" action="{{ url_for('auth.resend_verification') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button class="btn btn-info w-100">
+                        Gửi lại email xác thực
+                    </button>
+                </form>
+
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('auth.logout') }}">Đăng xuất</a>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

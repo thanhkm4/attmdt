@@ -1,0 +1,89 @@
+{% extends "base_auth.html" %}
+{% block title %}Đăng ký{% endblock %}
+
+{% block content %}
+<div class="min-vh-90 d-flex align-items-center justify-content-center bg-light">
+
+    <div class="card shadow-lg border-0 p-4"
+         style="border-radius: 20px; max-width: 380px; width: 100%;">
+
+        <div class="text-center mb-4">
+            <h3 class="fw-bold mb-1">Đăng ký</h3>
+            <p class="text-muted mb-0">
+                Tạo tài khoản mới
+            </p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} small">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+            <div class="mb-3">
+                <input type="text"
+                       name="username"
+                       class="form-control"
+                       placeholder="Tên đăng nhập"
+                       minlength="4"
+                       maxlength="25"
+                       pattern="^[a-zA-Z0-9_]+$"
+                       required>
+                <small class="text-muted">
+                    Chỉ chứa chữ, số và dấu _
+                </small>
+            </div>
+
+            <div class="mb-3">
+                <input type="email"
+                       name="email"
+                       class="form-control"
+                       placeholder="Email"
+                       maxlength="50"
+                       required>
+            </div>
+
+            <div class="mb-3">
+                <input type="password"
+                       name="password"
+                       class="form-control"
+                       placeholder="Mật khẩu"
+                       minlength="8"
+                       required>
+                <small class="text-muted">
+                    Tối thiểu 8 ký tự, nên có chữ hoa và số
+                </small>
+            </div>
+
+            <div class="mb-4">
+                <input type="password"
+                       name="confirm_password"
+                       class="form-control"
+                       placeholder="Nhập lại mật khẩu"
+                       minlength="8"
+                       required>
+            </div>
+
+            <button class="btn btn-primary w-100"
+                    style="border-radius: 10px;">
+                Đăng ký
+            </button>
+        </form>
+
+        <div class="text-center mt-3">
+            <small>
+                Đã có tài khoản?
+                <a href="{{ url_for('auth.login') }}">Đăng nhập</a>
+            </small>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

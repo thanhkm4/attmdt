@@ -1,0 +1,64 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center border-bottom border-2 mb-3 py-2" 
+    style="border-color: var(--color-gray-200) !important;">
+    
+    <h4 class="mb-0 fw-bold d-flex align-items-center" style="color: var(--color-gray-700);">
+        <i class="bi bi-pc-display-horizontal me-2 fs-4" style="color: var(--color-primary); line-height: 1;"></i>
+        <span>DASHBOARD</span>
+    </h4>
+
+    <div>
+        <div class="card-body py-1 px-3 d-flex align-items-center">
+            <div>
+                <div id="realtime-clock" class="fw-bold text-dark font-monospace" style="font-size: 1.1rem; line-height: 1;">--:--:--</div>
+                <div id="realtime-date" class="text-muted text-uppercase fw-bold" style="font-size: 0.8rem; letter-spacing: 0.5px;">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% include "user/detail.html" %}
+{% endblock %}
+
+
+{# --- QUAN TRỌNG: Sửa tên block thành 'scripts' (số nhiều) nếu base_app.html dùng tên đó --- #}
+{% block scripts %}
+<script>
+    function startRealTimeClock() {
+        const clockElement = document.getElementById('realtime-clock');
+        const dateElement = document.getElementById('realtime-date');
+
+        // Kiểm tra xem element có tồn tại không trước khi chạy để tránh lỗi console
+        if (!clockElement || !dateElement) {
+            console.error("Không tìm thấy element đồng hồ!");
+            return;
+        }
+
+        function updateTime() {
+            const now = new Date();
+
+            const timeString = now.toLocaleTimeString('vi-VN', { 
+                hour12: false,
+                hour: '2-digit', minute: '2-digit', second: '2-digit' 
+            });
+
+            const dateString = now.toLocaleDateString('vi-VN', {
+                weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric'
+            });
+
+            clockElement.innerText = timeString;
+            dateElement.innerText = dateString;
+        }
+
+        updateTime();
+        setInterval(updateTime, 1000);
+    }
+
+    // Đảm bảo chạy khi DOM load xong
+    document.addEventListener("DOMContentLoaded", () => {
+        console.log("Khởi động đồng hồ..."); // Log để debug xem hàm có chạy không
+        startRealTimeClock();
+    });
+</script>
+{% endblock %}

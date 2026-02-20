@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+
+  web:
+    image: thanhkma110/attmdt_app:latest
+    container_name: attmdt_app
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "1412:1412"
+    depends_on:
+      - db
+      - redis
+    networks:
+      - attmdt-net
+    volumes:
+      - logs_data:/app/logs
+
+  db:
+    image: postgres:17
+    container_name: attmdt_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: attmdt_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - attmdt-net
+
+  redis:
+    image: redis:7
+    container_name: attmdt_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - attmdt-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  logs_data:
+
+networks:
+  attmdt-net:
+    driver: bridge

@@ -1,0 +1,201 @@
+<style>
+    /* CSS Layout */
+    .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+    @media (max-width: 992px) { .form-grid { grid-template-columns: 1fr; } }
+</style>
+
+<input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+<div class="modal fade" id="userProfileModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-edit me-2 text-primary"></i>
+                    <span id="modalTitle" style="font-weight: 600;">Cập nhật thông tin</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body p-4">
+                <form id="userForm">
+                    <input type="hidden" id="userProfileId"> 
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="userProfileFullName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="userProfileEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Số điện thoại <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control" id="userProfilePhone" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" id="userProfileName" disabled style="background-color: #e9ecef;">
+                        </div>
+                        
+                        <div class="form-group" id="divUserRole">
+                            <label class="form-label ">Quyền hạn</label>
+                            <select class="form-select" id="userProfileRole">
+                                <option value="admin">Quản trị viên</option>
+                                <option value="unit_manager">Chủ quản lý đơn vị</option>
+                                <option value="station_manager">Quản lý trạm</option>
+                                <option value="station_monitor">Giám sát trạm</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="divUserStatus">
+                            <label class="form-label">Trạng thái</label>
+                            <div class="d-flex align-items-center" style="height: 38px;"> 
+                                <div class="form-check form-switch ps-0">
+                                    <input class="form-check-input" type="checkbox" id="userStatusToggle">
+                                    <label class="form-check-label ms-3 fw-bold" id="statusLabelText">Hoạt động</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if current_user.role == 'admin' %}
+                    <div class="form-grid" id="divUserUnit">
+                        <div class="form-group">
+                            <label class="form-label">Đơn vị</label>
+                            <select class="form-select" id="userProfileUnit">
+                                <option value="">-- Chọn đơn vị --</option>
+                                {% for unit in units %}
+                                    <option value="{{ unit.id }}">{{ unit.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    </form>
+            </div>
+            
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary" onclick="saveUserBase()">
+                    <i class="fas fa-save me-1"></i> Lưu thay đổi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const csrfToken = document.getElementById('csrf_token').value; 
+    let userProfileModalBS = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const modalEl = document.getElementById('userProfileModal');
+        if(modalEl) userProfileModalBS = new bootstrap.Modal(modalEl);
+    });
+
+    // Chỉ còn hàm openEditModal
+    function openEditProfileModal(dataObj, event) {
+        if(event) event.stopPropagation();
+
+        if (!dataObj || !dataObj.id) {
+            showMessage("error","Lỗi","Không có dữ liệu người dùng để sửa!");
+            return;
+        }
+
+        // Fill dữ liếu
+        document.getElementById("userProfileId").value = dataObj.id;
+        document.getElementById("userProfileFullName").value = dataObj.full_name || "";
+        document.getElementById("userProfileEmail").value = dataObj.email || "";
+        document.getElementById("userProfilePhone").value = dataObj.phone || "";
+        document.getElementById("userProfileName").value = dataObj.username || "";
+        
+        // Fill các trường Select/Check (Có thể bị disabled/hidden bởi logic bên ngoài)
+        document.getElementById("userProfileRole").value = dataObj.role || "";
+        
+        const unitSelect = document.getElementById("userProfileUnit");
+        if (unitSelect) unitSelect.value = dataObj.unit_id || ""; 
+
+        const isActive = (dataObj.is_active == true || dataObj.is_active == 1);
+        document.getElementById("userStatusToggle").checked = isActive;
+        updateStatusLabel();
+
+        // Mở Modal
+        userProfileModalBS.show();
+    }
+
+    function updateStatusLabel() {
+        const toggle = document.getElementById("userStatusToggle");
+        const label = document.getElementById("statusLabelText");
+        if(toggle.checked) {
+            label.innerText = "Hoạt động";
+            label.className = "form-check-label ms-3 fw-bold text-success";
+        } else {
+            label.innerText = "Vô hiệu hóa";
+            label.className = "form-check-label ms-3 fw-bold text-danger";
+        }
+    }
+
+    async function saveUserBase() {
+        // Lấy ID (Bắt buộc phải có)
+        const userProfileId = document.getElementById("userProfileId").value;
+        if (!userProfileId) {
+            showMessage('error', 'Lỗi', 'Không tìm thấy ID người dùng!');
+            return;
+        }
+
+        const isActive = document.getElementById("userStatusToggle").checked;
+        const unitSelect = document.getElementById("userProfileUnit");
+        const unitId = unitSelect ? unitSelect.value : null;
+
+        // Payload gọn nhẹ, KHÔNG CÓ password
+        const payload = {
+            full_name: document.getElementById("userProfileFullName").value.trim(),
+            email: document.getElementById("userProfileEmail").value.trim(),
+            phone: document.getElementById("userProfilePhone").value.trim(),
+            // Username không được sửa nên thực ra không cần gửi, nhưng gửi để backend validate cũng được
+            // username: document.getElementById("userName").value.trim(), 
+            role: document.getElementById("userProfileRole").value.trim(),
+            is_active: isActive,
+            unit_id: unitId
+        };
+
+        if (!payload.fullname && !payload.email && !payload.phone) {
+            showMessage('warning', 'Thông báo',' Vui lòng nhập đầy đủ thông tin cần cập nhật!');
+            return;
+        }
+
+        // Luôn là PUT vì chỉ sửa
+        try {
+            const res = await fetch(`/users/${userProfileId}`, {
+                method: "PUT",
+                headers: {"Content-Type": "application/json", "X-CSRFToken": csrfToken},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (!data.success) {
+                showMessage('error', 'Lỗi', data.message || "Cập nhật thất bại");
+                return;
+            }
+
+            showMessage('success', 'Thông báo', "Cập nhật thành công!");
+            userProfileModalBS.hide();
+            
+            // Reload dữ liệu trang cha
+            if (typeof window.loadUsers === 'function') {
+                window.loadUsers(window.currentPage || 1);
+            } else {
+                location.reload();
+            }
+
+        } catch (err) {
+            console.error(err);
+            showMessage('error', 'Lỗi', 'Không thể kết nối đến server!');
+        }
+    }
+</script>

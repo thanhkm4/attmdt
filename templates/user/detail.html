@@ -1,0 +1,321 @@
+
+{% block content %}
+<input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+
+            <div class="card shadow-lg border-0 rounded-4" style="border-radius: 16px;">
+                <div class="card-body p-4">
+
+                    <div class="d-flex flex-column flex-md-row align-items-center align-items-md-start mb-4 gap-2">
+                        <div class="me-4 text-center position-relative d-inline-block">
+                            <!-- Avatar -->
+                            <img id="avatar"
+                                src="/static/img/default-avatar.png"
+                                class="rounded-circle border"
+                                width="120"
+                                height="120"
+                                style="object-fit: cover;">
+
+                            <!-- Hidden input -->
+                            <input type="file" id="avatarInput" accept="image/*" hidden>
+
+                            <!-- Nút camera nhỏ -->
+                            <button type="button"
+                                    class="btn btn-info btn-square-lg rounded-circle border avatar-upload-btn"
+                                    onclick="document.getElementById('avatarInput').click()">
+                                <i class="bi bi-camera-fill"></i>
+                            </button>
+                        </div>
+
+                        <div class="d-flex flex-column">
+                            <h4 id="full_name" class="mb-1 fw-bold"></h4>
+                            <label id="username" class="text-muted mb-1"></label>
+                            <label id="status_badge"></label>
+                            <label id="twofa_badge"></label>
+                            <label id="biography" class="mb-0 text-secondary fst-italic">
+                                Chưa có tiểu sử.
+                            </label>
+                        </div>
+
+                        
+
+                    </div>
+
+                    <hr>
+
+                    <div class="row gy-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="text-muted small">Email</label>
+                            <div id="email" style="font-weight: 600;"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="text-muted small">Số điện thoại</label>
+                            <div id="phone" class="text-uppercase" style="font-weight: 600;"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="text-muted small">Vai trò</label>
+                            <div id="role" class="text-uppercase" style="font-weight: 600;"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="text-muted small">Ngày tạo</label>
+                            <div id="created_at" class="text-uppercase" style="font-weight: 600;"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="text-muted small">Bảo mật 2 lớp</label>
+                            <div class="form-check form-switch" style="margin-left: -40px; margin-top: 5px;">
+                                <input class="form-check-input" type="checkbox" id="twoFactorSwitch" style="margin-right: 10px;">
+                                <div id="two_factor_method" class="text-uppercase" style="font-weight: 600; "></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% include "user/emailModal.html" %}
+{% include "user/otpModal.html" %}
+
+<script>
+const csrfToken = document.getElementById('csrf_token')
+    ? document.getElementById('csrf_token').value
+    : null;
+let is2FAConfirmed = false;
+
+const twoFactorSwitch = document.getElementById("twoFactorSwitch");
+const emailModal = new bootstrap.Modal(document.getElementById("emailModal"));
+const otpModal = new bootstrap.Modal(document.getElementById("otpModal"));
+
+twoFactorSwitch.addEventListener("change", async function () {
+
+    if (this.checked) {
+        is2FAConfirmed = false;
+        emailModal.show();
+    } else {
+
+        if (!confirm("Bạn có chắc muốn tắt 2FA?")) {
+            this.checked = true;
+            return;
+        }
+
+        try {
+            const res = await fetch("/disable-2fa", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                }
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                showMessage("error", "Lỗi", data.message);
+                this.checked = true;
+                return;
+            }
+
+            showMessage("success", "Thành công", "Đã tắt 2FA");
+
+            loadProfile();
+
+        } catch (err) {
+            console.error(err);
+            showMessage("error", "Lỗi", "Không thể tắt 2FA");
+            this.checked = true;
+        }
+    }
+});
+
+document.getElementById("emailModal")
+    .addEventListener("hidden.bs.modal", function () {
+
+        if (!is2FAConfirmed) {
+            twoFactorSwitch.checked = false;
+        }
+
+    });
+
+document.getElementById("sendOtpBtn").addEventListener("click", async function () {
+
+    const email = document.getElementById("otpEmail").value.trim();
+
+    if (!email) {
+        showMessage("error", "Lỗi", "Vui lòng nhập email");
+        return;
+    }
+
+    try {
+        const res = await fetch("/send-enable-2fa-otp", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify({
+                email: email
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            showMessage("error", "Lỗi", data.error || "Không gửi được OTP");
+            return;
+        }
+
+        showMessage("success", "Thành công", "OTP đã được gửi tới email");
+
+        emailModal.hide();
+        otpModal.show();
+
+    } catch (err) {
+        console.error(err);
+        showMessage("error", "Lỗi", "Lỗi kết nối server");
+    }
+
+});
+
+document.getElementById("verifyOtpBtn").addEventListener("click", async function () {
+    const otp = document.getElementById("otpInput").value.trim();
+    if (otp.length !== 6) {
+        showMessage("error", "Lỗi", "OTP phải đủ 6 số");
+        return;
+    }
+    try {
+        const res = await fetch("/verify-otp", {
+            method: "POST",
+            headers: {"Content-Type": "application/json", "X-CSRFToken": csrfToken},
+            body: JSON.stringify({otp: otp})
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            showMessage("error", "Lỗi", data.error || "OTP không hợp lệ");
+            return;
+        }
+        is2FAConfirmed = true;
+        showMessage("success", "Thành công", "Kích hoạt 2FA thành công");
+        otpModal.hide();
+        loadProfile(); // refresh lại profile
+    } catch (err) {
+        console.error(err);
+        showMessage("error", "Lỗi", "Lỗi xác thực OTP");
+    }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadProfile();
+});
+
+async function loadProfile() {
+    try {
+        const res = await fetch("/users/me", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+            showMessage("error", "Lỗi", data.message || "Không thể tải profile");
+            return;
+        }
+
+        renderProfile(data.data);
+
+    } catch (error) {
+        console.error("❌ Error loading profile:", error);
+        showMessage("error", "Lỗi", "Lỗi tải dữ liệu profile.");
+    }
+}
+
+function renderProfile(user) {
+
+    // Avatar
+    const avatarEl = document.getElementById("avatar");
+    if (user.avatar) {
+        avatarEl.src = user.avatar;
+    } else {
+        avatarEl.src = "/static/img/default-avatar.png";
+    }
+
+    // Basic Info
+    document.getElementById("full_name").innerText =
+        user.full_name || user.username;
+
+    document.getElementById("username").innerText =
+        "@" + user.username;
+
+    // Status badge
+    const statusBadge = document.getElementById("status_badge");
+    statusBadge.innerHTML = user.is_active
+        ? `<label class="badge badge-success">Đang hoạt động</label>`
+        : `<span class="badge badge-danger">Bị khóa</span>`;
+
+    // 2FA badge
+    const twofaBadge = document.getElementById("twofa_badge");
+    if (user.two_factor_enabled) {
+        twofaBadge.innerHTML = `
+            <span class="badge badge-success">
+                2FA (${user.two_factor_method.toUpperCase()})
+            </span>
+        `;
+    } else {
+        twofaBadge.innerHTML = "";
+    }
+
+    twoFactorSwitch.checked = user.two_factor_enabled;
+    document.getElementById("biography").innerText = user.biography || "Chưa có tiểu sử.";
+
+    // Detail
+    document.getElementById("email").innerText = user.email;
+    document.getElementById("phone").innerText =
+        user.phone || "Chưa cập nhật";
+    document.getElementById("role").innerText = user.role;
+    document.getElementById("two_factor_method").innerText = user.two_factor_method;
+    document.getElementById("created_at").innerText = user.created_at;
+}
+
+document.getElementById("avatarInput").addEventListener("change", async function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    try {
+        const res = await fetch("/users/me/upload-avatar", {
+            method: "POST",
+            headers: {"X-CSRFToken": csrfToken},
+            body: formData
+
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+            showMessage("error", "Lỗi", data.message);
+            return;
+        }
+
+        // Cập nhật avatar mới
+        document.getElementById("avatar").src = data.avatar + "?t=" + new Date().getTime();
+
+        showMessage("success", "Thành công", "Cập nhật avatar thành công");
+
+    } catch (err) {
+        console.error(err);
+        showMessage("error", "Lỗi", "Không thể upload avatar");
+    }
+});
+
+</script>
+{% endblock %}

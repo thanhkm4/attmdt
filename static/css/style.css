@@ -1,0 +1,259 @@
+.avatar-upload-btn {
+    position: absolute;
+    bottom: 1px;
+    right: -3px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+}
+
+.avatar-upload-btn:hover {
+    transform: scale(1.1);
+    transition: 0.2s;
+}
+
+/* 1. Ẩn thanh cuộn cho TẤT CẢ các thẻ (html, body, div,...) */
+*::-webkit-scrollbar {
+    display: none !important; /* Dành cho Chrome, Safari, Opera */
+}
+
+* {
+    -ms-overflow-style: none !important;  /* IE and Edge */
+    scrollbar-width: none !important;  /* Firefox */
+}
+
+/* 2. Đảm bảo riêng cho phần nội dung chính (flex-grow-1) */
+
+/* =========================================================
+   2. MAIN LAYOUT (CONTAINER & WRAPPER)
+   ========================================================= */
+
+
+
+/* =========================================================
+   GIỮ LẠI CÁC STYLE CŨ (FORM, BUTTON, TABLE...)
+   (Phần dưới này giữ nguyên từ file style.css gốc của bạn)
+   ========================================================= */
+.user-form-container { max-width: 1300px; margin: 0 auto; }
+.form-header { background: var(--gradient-primary); color: var(--color-white); padding: 2rem 2.5rem; border-radius: var(--radius-lg); margin-bottom: 1rem; }
+.form-header h1 { font-size: 1.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; }
+.form-card { background: var(--color-white); border-radius: 25px; padding: 2.5rem; margin-bottom: 0;}
+.form-grid-3 { 
+    display: grid; 
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 1.5rem; 
+    margin-bottom: 1.5rem; 
+}
+.form-grid-2 { 
+    display: grid; 
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 1.5rem; 
+    margin-bottom: 1.5rem; 
+}
+/* Responsive: Trên màn hình nhỏ thì về 1 cột */
+@media (max-width: 992px) {
+    .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 1024px) { .form-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { .form-grid, .form-grid-2 { grid-template-columns: 1fr; } }
+.form-group { display: flex; flex-direction: column; margin-bottom: 0.5rem; }
+.form-label { font-weight: 600; color: var(--color-gray-700); font-size: 1rem; margin-bottom: 0.5rem; }
+.form-label i { color: #0f766e; font-size: 1.1rem; margin-right: 0.5rem; }
+.required { color: var(--color-danger); margin-left: 10px; font-size: 1rem; font-weight: 700; }
+.form-control { border: 1.5px solid var(--color-gray-200); border-radius: var(--radius-md); padding: 0.75rem 1rem; background: var(--color-gray-50); transition: var(--transition-base); }
+.form-control:focus { border-color: var(--color-primary); background: var(--color-white); box-shadow: 0 0 0 3px rgba(17,153,142,0.15); outline: none; }
+.form-actions { display: flex; justify-content: flex-end; gap: 1rem; padding: 1.5rem 0; }
+
+
+.radio-group { display: flex; gap: 1rem; padding: 0.75rem; background: var(--color-gray-50); border: 1.5px solid var(--color-gray-200); border-radius: var(--radius-md); }
+.radio-option { flex: 1; position: relative; }
+.radio-option input { position: absolute; opacity: 0; }
+.radio-option label { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem 1rem; background: white; border: 1.5px solid #e5e7eb; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; font-weight: 500; color: #4b5563; font-size: 0.9rem; }
+.radio-option input:checked + label { background: var(--gradient-primary); color: var(--color-white); border-color: var(--color-primary); }
+
+
+
+body {
+    overflow-x: hidden;
+    
+}
+
+#userModal .modal-content{
+    border-radius: 14px !important;
+    overflow: hidden;      /* 🔥 BẮT BUỘC */
+    border: none;  
+}
+.btn { 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 0.65rem 1.2rem; 
+    border-radius: var(--radius-md); 
+    gap: 5px; 
+    font-weight: 600; 
+    cursor: pointer; 
+    background: var(--color-white); 
+    border: 2px solid; 
+    transition: var(--transition-base); }
+.btn-outline { color: var(--color-gray-600); border-color: var(--color-gray-400); }
+.btn-outline:hover { background: var(--color-gray-400); color: white; }
+.btn-primary { color: var(--color-primary); border-color: var(--color-primary); }
+.btn-primary:hover { background: var(--color-primary); color: white; border-color: var(--color-primary);}
+.btn-warning { color: #f59e0b; border-color: #edf3ff; }
+.btn-warning:hover { background: #f59e0b; color: white; }
+.btn-info { color: var(--color-info); border-color: var(--color-info); }
+.btn-info:hover { background: var(--color-info); color: white; }
+.btn-danger { color: var(--color-danger); border-color: var(--color-danger); }
+.btn-danger:hover { background: var(--color-danger); color: white; }
+.btn-square { width: 32px; height: 32px; padding: 0; border-width: 1px; border-radius: 6px; }
+.btn-toolbar { padding: 0.35rem 0.75rem; font-size: 0.85rem; font-weight: 500; border-width: 1px; border-radius: 6px; }
+.btn-toolbar-lg { padding: 0.5rem 0.7rem; font-size: 1rem; font-weight: 500; border-width: 1px; border-radius: 6px; }
+.btn-square-lg { width: 40px; height: 40px; padding: 0; border-width: 1px; border-radius: 6px; }
+.btn-closey {color: var(--color-primary); border-color: var(--color-primary);border-radius: 6px; }
+
+.table-wrapper { background: var(--color-white); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.table-scroll { max-height: 65vh; overflow: auto; }
+.table { width: 100%; border-collapse: collapse; color: var(--table-text); font-size: 1rem; }
+.table-fixed { table-layout: fixed; min-width: 1000px; }
+.table thead th { background: var(--table-header-bg); font-weight: 600; padding: 0.75rem 1rem; border-bottom: 2px solid var(--table-border); text-align: left; white-space: nowrap; }
+.table tbody td { padding: 0.7rem 1rem; border-bottom: 1px solid var(--table-border); background: var(--color-white); vertical-align: middle; }
+.table tbody tr:hover td { background: var(--table-row-hover); }
+.td-file-name { white-space: normal !important; word-break: break-word; }
+.table-scroll thead th { position: sticky; top: 0; z-index: 10; background: #f8f9fa; }
+.table-scroll th:first-child, .table-scroll td:first-child { position: sticky; left: 0; z-index: 5; background: var(--color-white); }
+.table-scroll thead th:first-child { z-index: 20; background: var(--table-header-bg); }
+
+
+.col-xs { width: 80px; font-weight: 600;} 
+.col-sm { width: 100px; font-weight: 600;}
+.col-smd { width: 140px; font-weight: 600;} 
+.col-md { width: 150px; font-weight: 600;} 
+.col-lg { width: 220px; font-weight: 600;} 
+.col-lgmd { width: 250px; font-weight: 600;} 
+.col-xl { width: 280px; font-weight: 600;} 
+.col-xxl { width: 320px; font-weight: 600;}
+.col-xxxl { width: 380px; font-weight: 600;}
+
+
+.text-nowrap { white-space: nowrap; }
+
+.table-actions { display: flex; gap: 0.5rem; }
+.table-actions .btn { padding: 0.35rem 0.6rem; font-size: 0.8rem; }
+
+.form-select { font-size: 13px; padding-left: 15px; align-items: center; border-radius: 6px; border: 1px solid #ced4da; background-color: #fff; cursor: pointer; }
+.form-select:hover { border-color: #0d6efd; }
+.form-select:focus { border-color: #0d6efd; box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.25); outline: none; }
+.form-select option { font-size: 13px; }
+/* Ghi đè padding mặc định của TomSelect */
+.ts-control {
+    padding-left: 10px !important; /* Điều chỉnh số này nhỏ lại nếu muốn sát lề trái hơn */
+}
+
+.badge-success {  color: var(--color-success); font-weight: 600;}
+.badge-warning {  color: var(--color-warning);  font-weight: 600;}
+.badge-danger {  color: var(--color-danger);  font-weight: 600;}
+/* Nếu muốn chỉnh vị trí của các item đã chọn */
+.ts-control .item {
+    margin-left: 0 !important;
+    
+}
+.ts-item { background-color: #5865f2 !important; color: #fff !important; border-radius: 999px !important; padding: 10px 10px !important; font-size: 13px; font-weight: 500; }
+.ts-item .remove { margin-left: 6px; font-weight: bold; }
+
+.station-actions-right { margin-top: auto; display: flex; justify-content: flex-start; gap: 0.5rem; }
+.station-actions-left { margin-top: auto; display: flex; justify-content: flex-end; gap: 0.5rem; }
+.text-gray{ font-size: 1.1rem; font-weight: 600; }
+
+
+/* --- [MỚI] 4. Custom Select To Hơn --- */
+.custom-select-lg {
+    height: 50px; /* Cao hơn bình thường (bình thường khoảng 38px) */
+    font-size: 1rem; /* Chữ to hơn một chút */
+    background-color: #f8f9fa; /* Màu nền nhẹ cho nổi bật */
+    border: 2px solid #e9ecef; /* Viền đậm hơn chút */
+}
+.custom-select-lg:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+}
+/* 2. [QUAN TRỌNG] Style lại nút gạt để không bị chồng layout */
+.custom-toggle-wrap {
+    height: 50px; /* Bắt buộc cao bằng ô Select bên cạnh */
+    display: flex;
+    align-items: center; /* Căn giữa theo chiều dọc */
+    background-color: #fff; /* (Tùy chọn) Thêm nền nếu muốn giống input */
+    padding-left: 5px;
+}
+/* CSS cho trạm đang bị Alarm (Vượt ngưỡng hoặc lỗi thiết bị) */
+/* 1. Định nghĩa chuyển động (Animation) */
+
+
+/* 2. Áp dụng vào class */
+.station-alarm-active {
+    border: 2px solid #e55361 !important; /* Viền đỏ cứng */
+    background-color: #fff9f9;            /* Nền đỏ nhạt */
+    
+    /* Gọi animation: tên | thời gian | lặp vô tận */
+    animation: alarm-wave 1s infinite; 
+}
+
+/* --- [MỚI] 5. Toggle Switch Custom (Nút gạt) --- */
+.form-switch .form-check-input {
+    width: 3rem;       /* Chiều rộng nút gạt */
+    height: 1.5rem;    /* Chiều cao nút gạt */
+    cursor: pointer;
+    margin-left: 0;     /* [FIX LỖI] Xóa margin âm của Bootstrap gây chồng layout */
+    margin-top: 0;
+    
+}
+.form-switch .form-check-input:checked {
+    background-color: var(--color-primary-light); /* Mã màu xanh lá chuẩn (Success) */
+    border-color: #198754;
+    border: 2px solid #198754;
+}
+.toggle-label-container {
+    display: flex;
+    align-items: center;
+    height: 100%; /* Canh giữa theo chiều dọc với input bên cạnh */
+    padding-top: 5px;
+}
+
+    
+/* Style cho Password Toggle */
+.password-toggle {
+    position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: #9ca3af; cursor: pointer; padding: 0.25rem;
+}
+.password-toggle:hover { color: #667eea; }
+
+/* Password Strength */
+.password-strength { margin-top: 0.5rem; height: 3px; background: #e5e7eb; border-radius: 2px; overflow: hidden; }
+.password-strength-bar { height: 100%; width: 0%; transition: all 0.3s ease; border-radius: 2px; }
+.strength-weak { width: 33%; background: #ef4444; }
+.strength-medium { width: 66%; background: #f59e0b; }
+.strength-strong { width: 100%; background: #10b981; }
+
+  /* Container để giới hạn chiều rộng và cho phép scroll */
+.table-responsive {
+    overflow-x: auto;
+    overflow-y: auto;
+    position: relative;
+    cursor: grab;
+    user-select: none;
+    display: block;      /* Đảm bảo là block element */
+    width: auto;
+    /* Firefox */
+    scrollbar-width: none;
+
+    /* IE / Edge cũ */
+    -ms-overflow-style: none;
+}
+
+/* Chrome / Edge / Safari */
+.table-responsive::-webkit-scrollbar {
+    display: none;
+}

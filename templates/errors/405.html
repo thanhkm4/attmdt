@@ -1,0 +1,48 @@
+{% extends "base_app.html" %}
+
+{% block title %}ATTMDT{% endblock %}
+
+{% block content %}
+
+<div class="container py-5 text-center">
+
+    <!-- Hình robot -->
+    <img src="{{ url_for('static', filename='images/robot.png') }}" 
+        alt="Error Robot" 
+        class="img-fluid mb-4" 
+        style="max-width: 200px;">
+
+    <!-- Tiêu đề -->
+    <h1 class="display-4 fw-bold text-danger mb-3">405 - Lỗi Máy Chủ</h1>
+
+    <!-- Mô tả -->
+    <p class="text-muted mb-4 fs-5">
+        Rất tiếc! Đã xảy ra sự cố không mong muốn trên hệ thống.<br>
+        Vui lòng thử lại sau hoặc quay về trang chủ.
+    </p>
+
+    <div class="d-flex justify-content-center gap-3">
+        <button onclick="window.location.reload()" class="btn btn-outline-secondary btn-lg">
+            <i class="fas fa-redo me-2"></i>Thử lại
+        </button>
+
+        <a href="{{ url_for('main.index') }}" class="btn btn-primary btn-lg">
+            <i class="fas fa-home me-2"></i>Về trang chủ
+        </a>
+
+    </div>
+
+</div>
+
+<style>
+    .container img {
+        animation: float 4s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0%   { transform: translateY(0px); }
+        50%  { transform: translateY(-15px); }
+        100% { transform: translateY(0px); }
+    }
+</style>
+{% endblock %}

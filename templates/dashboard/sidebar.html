@@ -1,0 +1,41 @@
+<nav class="sidebar-menu border-end bg-white">
+    <ul class="list-unstyled m-0 p-2">
+        {% for item in menu %}
+            {% if current_user.role in item.roles %}
+                <li class="mb-1">
+                    <!-- Toggle collapse chuẩn -->
+                    <a class="sidebar-link d-flex rounded"
+                        data-bs-toggle="collapse"
+                        href="#menu-{{ item.key }}"
+                        role="button"
+                        aria-expanded="false"
+                        title="{{ item.label }}"
+                        aria-controls="menu-{{ item.key }}">
+                        <i class="bi {{ item.icon }}  me-2"></i>
+                        <span>{{ item.label }}</span>
+                        <i class="bi bi-chevron-down small transition-icon "></i>
+                    </a>
+
+                    <div class="collapse" id="menu-{{ item.key }}">
+                        <ul class="list-unstyled fw-normal pb-1 ps-2">
+                            {% for child in item.children %}
+                                <li>
+                                    {% if child.get('endpoint') %}
+                                        <a href="{{ url_for(child['endpoint']) }}" class="submenu-link py-2 text-decoration-none rounded">
+                                            <i class="bi {{ child.icon }} me-2"></i>{{ child.label }}
+                                        </a>
+                                    {% else %}
+                                        <span class="submenu-link py-2 text-muted">
+                                            <i class="bi {{ child.icon }} me-2"></i>{{ child.label }}
+                                        </span>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+</nav>
+

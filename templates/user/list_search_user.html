@@ -1,0 +1,265 @@
+{% extends "base_app.html" %}
+{% block content %}
+<input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+<style>
+    /* Style cho Password Toggle */
+    .password-toggle {
+        position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+        background: none; border: none; color: #9ca3af; cursor: pointer; padding: 0.25rem;
+    }
+    .password-toggle:hover { color: #667eea; }
+    
+    /* Password Strength */
+    .password-strength { margin-top: 0.5rem; height: 3px; background: #e5e7eb; border-radius: 2px; overflow: hidden; }
+    .password-strength-bar { height: 100%; width: 0%; transition: all 0.3s ease; border-radius: 2px; }
+    .strength-weak { width: 33%; background: #ef4444; }
+    .strength-medium { width: 66%; background: #f59e0b; }
+    .strength-strong { width: 100%; background: #10b981; }
+
+    /* Custom Form Layout trong Modal */
+    .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+    .form-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem; }
+    .input-wrapper { position: relative; }
+    
+    /* Radio Group Custom */
+    .radio-group { display: flex; gap: 1rem; padding: 0.5rem; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; }
+    .radio-option { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+    
+    /* Responsive cho Modal */
+    @media (max-width: 992px) {
+        .form-grid, .form-grid-2 { grid-template-columns: 1fr; }
+    }
+</style>
+<script>
+    const RAW_ROLE = '{{ current_user.role }}';
+    const CURRENT_USER_ID = {{ current_user.id }};
+    const CURRENT_USER_ROLE = RAW_ROLE.trim();
+</script>
+<div class="user-form-container">
+<!-- ===== HEADER ===== -->
+    <div class="d-flex justify-content-between align-items-center border-bottom border-2 mb-3 py-2" 
+            style="border-color: var(--color-gray-200) !important;">
+        
+        <h4 class="mb-0 fw-bold text-nowrap" style="color: var(--color-gray-700);">
+            <i class="fas fa-satellite-dish me-2 fs-4" style="color: var(--color-primary);"></i>
+            QUẢN LÝ NGƯỜI DÙNG
+        </h4>
+
+        <div class="d-flex gap-2" style="height: 45px;">
+            <input type="text" id="searchKeyword" class="form-control form-control-sm w-auto" 
+                style="width: 250px; border-radius: 8px; cursor: pointer; "   
+                placeholder="Tìm username, tên..." onkeyup="debounceSearch()">
+
+            <select id="filterRole" 
+                class="form-select form-select-sm w-auto" 
+                style="width: 250px; border-radius: 8px; cursor: pointer; )"
+                onchange="loadUsers()">
+                <option value="">Tất cả quyền</option>
+                <option value="unit_manager">Chủ đơn vị</option>
+                <option value="station_manager">Quản lý trạm</option>
+                <option value="station_monitor">Giám sát trạm</option>
+            </select>
+
+            <select id="filterStatus" 
+                class="form-select form-select-sm w-auto" 
+                style="width: 250px; border-radius: 8px; cursor: pointer; )"
+                onchange="loadUsers()">
+                <option value="">Tất cả trạng thái</option>
+                <option value="true">Hoạt động</option>
+                <option value="false">Vô hiệu hóa</option>
+            </select>
+
+            <button class="btn btn-primary border" onclick="openCreateModal()">
+                <i class="fas fa-plus"></i> Thêm mới
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== LIST USER ===== -->
+    <div class="card mb-3">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0 table-fixed table-scroll">
+                <thead>
+                    <tr>
+                        <th class="text-start col-lg">USERNAME</th>
+                        <th class="col-lg">HỌ VÀ TÊN</th>
+                        <th class="col-md">VAI TRÒ</th>
+                        <th class="col-lg">TRẠM QUẢN LÝ</th>
+                        <th class="col-md">TRẠNG THÁI</th>
+                        {% if current_user.role in ['admin', 'unit_manager', 'station_manager'] %}
+                            <th class='col-md'>TÙY CHỈNH</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="card-footer d-flex justify-content-between align-items-center py-2">
+            <span class="text-muted small" id="paginationInfo">Đang tải...</span>
+            <nav>
+                <ul class="pagination pagination-sm mb-0" id="paginationControls"></ul>
+            </nav>
+        </div>
+    </div>
+</div>
+<!-- ===== LIST USER ===== -->
+
+
+
+<!-- ===== CREATE MODAL ===== -->
+<div class="modal fade" id="userModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" >
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2" style="color: var(--color-primary);"></i><span id="modalTitle" style="font-weight: 600;">Thêm người dùng mới</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body p-4">
+                <form id="userForm">
+                    <input type="hidden" id="currentUserUnitId" value="{{ current_user.unit_id if current_user.unit_id else '' }}">
+                    <input type="hidden" id="userId"> <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label small"style="font-weight: 600;">Họ và tên <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" oninput="sanitizeInput(this)" id="userFullName" required placeholder="Nguyễn Văn A" maxlength="40">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label small" style="font-weight: 600;">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="userEmail" required placeholder="email@example.com" maxlength="40">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label small style="font-weight: 600;"">Số điện thoại <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control" id="userPhone" required placeholder="09xxxxxxxx" maxlength="10">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label small" style="font-weight: 600;">Username <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" oninput="sanitizeInput(this)" id="userName" required placeholder="nguyenvana" maxlength="30">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label small" style="font-weight: 600;">Quyền hạn <span class="text-danger">*</span></label>
+                            <select class="form-select custom-select-lg" id="userRole" required>
+                                
+                                
+                                {# Nếu là Admin: Được tạo mọi thứ #}
+                                {% if current_user.role == 'admin' %}
+                                    <option value="">-- Chọn vai trò --</option>
+                                    <option value="admin">Quản trị viên (Admin)</option>
+                                    <option value="unit_manager">Chủ quản lý đơn vị</option>
+                                    <option value="station_manager">Quản lý trạm</option>
+                                    <option value="station_monitor">Giám sát trạm</option>
+                                
+                                {# Nếu là Chủ đơn vị: Chỉ tạo được Manager và Monitor #}
+                                {% elif current_user.role == 'unit_manager' %}
+                                    <option value="">-- Chọn vai trò --</option>
+                                    <option value="station_manager">Quản lý trạm</option>
+                                    <option value="station_monitor">Giám sát trạm</option>
+                                    
+                                {# Nếu là Quản lý trạm: Chỉ tạo được Monitor #}
+                                {% elif current_user.role == 'station_manager' %}
+                                    <option value="station_monitor">Giám sát trạm</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label small" style="font-weight: 600;">Trạng thái</label>
+                            <div class="d-flex align-items-center" style="height: 50px;"> 
+                                <div class="form-check form-switch ps-0 d-flex align-items-center">
+                                    <input class="form-check-input" type="checkbox" id="userStatusToggle" checked onchange="updateStatusLabel()">
+                                    <label class="form-check-label ms-3" for="userStatusToggle" id="statusLabelText" style="font-weight: 600;">Hoạt động</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        {% if current_user.role == 'admin' %}
+                        <div class="form-group">
+                            <label class="form-label small fw-bold">Đơn vị <span class="text-danger">* </span></label>
+                            <select class="form-select custom-select-lg" id="userUnit">
+                                <option value="">-- Chọn đơn vị --</option>
+                                {% for unit in units %}
+                                    <option value="{{ unit.id }}">{{ unit.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <hr class="my-3">
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="form-label small" style="font-weight: 600;">Mật khẩu <span class="text-danger">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="password" class="form-control" id="userPassword" placeholder="••••••••" oninput="checkPasswordStrength()">
+                                <button type="button" class="password-toggle" onclick="togglePassword('userPassword', this)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="password-strength">
+                                <div class="password-strength-bar" id="strengthBar"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label small" style="font-weight: 600;">Xác nhận mật khẩu <span class="text-danger">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="password" class="form-control" id="userRePassword" placeholder="••••••••">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-outline border" data-bs-dismiss="modal">Hủy bỏ</button>
+                <button type="button" class="btn btn-primary border" onclick="saveUser()">
+                    <i class="fas fa-save me-1"></i> Lưu lại
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ===== CREATE MODAL ===== -->
+
+
+
+<!-- ===== CONFIRM DELETE MODAL ===== -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered"
+        >
+        <div class="modal-content" style="border-radius: 14px ;">
+
+        <div class="modal-header badge-danger" style="border-radius: 14px  14px 0 0;">
+            <h5 class="modal-title ">
+            <i class="fas fa-exclamation-triangle "></i> Xác nhận xóa
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+            <p class="mb-0" style="font-size: 1rem;">
+            Bạn có chắc chắn muốn <b>xóa người dùng này</b>?  
+            <br>
+            <span class="text-danger">Hành động này không thể hoàn tác.</span>
+            </p>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-danger border" id="confirmDeleteBtn">
+            <i class="fas fa-trash"></i> Xóa
+            </button>
+        </div>
+
+        </div>
+    </div>
+</div>
+<!-- ===== CONFIRM DELETE MODAL ===== -->
+<script src="{{ url_for('static', filename='js/users/user.js') }}"></script>
+<script src="{{ url_for('static', filename='js/users/user.ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/users/user.api.js') }}"></script>
+{% endblock %}
