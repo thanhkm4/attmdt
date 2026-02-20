@@ -1,0 +1,18 @@
+# Nội dung file .gitignore
+
+# 1. Bỏ qua file môi trường chứa mật khẩu
+.env
+# 2. Bỏ qua thư mục ảo Python (nếu có)
+app_env/
+env/
+
+# 3. Bỏ qua thư mục biên dịch của Python
+__pycache__/
+*.pyc
+
+# 4. Bỏ qua thư mục IDE (VSCode, Pycharm)
+.idea/
+.vscode/
+
+# 5. Bỏ qua thư mục dữ liệu local (nếu bạn map volume ra ngoài)
+logs/
