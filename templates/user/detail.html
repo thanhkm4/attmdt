@@ -73,6 +73,24 @@
                                 <div id="two_factor_method" class="text-uppercase" style="font-weight: 600; "></div>
                             </div>
                         </div>
+
+                        
+                        
+                        
+                        <div class="col-md-6">
+                            <label class="text-muted small">Số dư tài khoản</label>
+                            <div class="d-flex align-items-center gap-3" style="margin-top: 2px;">
+                                <div id="balance" class="text-success" style="font-weight: 700; font-size: 1.2rem;">0 VND</div>
+                                
+                                <a href="/users/transfer" class="btn btn-primary btn-sm border">
+                                    <i class="bi bi-send-fill me-1"></i> BANK
+                                </a>
+                            </div>
+                            <div id="account_number" class="text-muted small fst-italic mt-1"></div>
+                        </div>
+
+
+
                     </div>
                 </div>
             </div>
@@ -98,7 +116,6 @@ twoFactorSwitch.addEventListener("change", async function () {
         is2FAConfirmed = false;
         emailModal.show();
     } else {
-
         if (!confirm("Bạn có chắc muốn tắt 2FA?")) {
             this.checked = true;
             return;
@@ -277,11 +294,29 @@ function renderProfile(user) {
 
     // Detail
     document.getElementById("email").innerText = user.email;
-    document.getElementById("phone").innerText =
-        user.phone || "Chưa cập nhật";
+    document.getElementById("otpEmail").value = user.email;
+    document.getElementById("phone").innerText = user.phone || "Chưa cập nhật";
     document.getElementById("role").innerText = user.role;
     document.getElementById("two_factor_method").innerText = user.two_factor_method;
     document.getElementById("created_at").innerText = user.created_at;
+
+    // --- BỔ SUNG RENDER SỐ DƯ ---
+    const balance = user.balance !== undefined ? user.balance : 0;
+    
+    // Format tiền tệ chuẩn Việt Nam (VD: 100.000.000 ₫)
+    const formattedBalance = new Intl.NumberFormat('vi-VN', { 
+        style: 'currency', 
+        currency: user.currency || 'VND' 
+    }).format(balance);
+    
+    document.getElementById("balance").innerText = formattedBalance;
+    
+    // Hiển thị thêm số tài khoản nếu có
+    if (user.account_number) {
+        document.getElementById("account_number").innerText = "STK: " + user.account_number;
+    } else {
+        document.getElementById("account_number").innerText = "Chưa mở tài khoản";
+    }
 }
 
 document.getElementById("avatarInput").addEventListener("change", async function () {

@@ -1,6 +1,7 @@
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, url_for, render_template
 from flask_login import login_required, current_user
 from app.routes.user.user_services import UserService
+from app.models import TransactionLog, AccountBalance, User
 import traceback
 
 user_bp = Blueprint("user", __name__, url_prefix="/users")
@@ -23,7 +24,12 @@ def user_detail(user_id):
 @user_bp.route("/profile", methods=["GET"])
 @login_required
 def profile_page():
-    return render_template("user/profile.html")
+    return render_template("dashboard.html")
+
+@user_bp.route("/transfer", methods=["GET"])
+@login_required
+def transfer_page():
+    return render_template("user/transaction.html")
 
 
 # ================================================================================================
@@ -196,3 +202,102 @@ def upload_avatar():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "message": "Lỗi hệ thống"}), 500
+
+# ================================================================================================
+
+@user_bp.route('/transactions/create', methods=['POST'])
+@login_required
+def create_transaction_api():
+    data = request.get_json(silent=True) or {}
+    try:
+        tx = UserService.initiate_transfer_service(current_user, data)
+        # Thay vì báo thành công, trả về URL để frontend chuyển hướng sang trang nhập OTP
+        return jsonify({
+            "success": True, 
+            "redirect": url_for("user.transfer_otp_page", tx_id=tx.transaction_id)
+        }), 200
+    except ValueError as ve:
+        return jsonify({"success": False, "message": str(ve)}), 400
+
+
+
+@user_bp.route('/transactions/verify/<tx_id>', methods=['GET'])
+@login_required
+def transfer_otp_page(tx_id):
+    """Render giao diện nhập OTP"""
+    # Đảm bảo giao dịch này tồn tại và là của user hiện tại
+    tx = TransactionLog.query.filter_by(transaction_id=tx_id, sender_id=current_user.id, status="PENDING").first_or_404()
+    return render_template("user/transfer_otp.html", tx=tx)
+
+
+
+@user_bp.route('/transactions/confirm', methods=['POST'])
+@login_required
+def confirm_transaction_api():
+    data = request.get_json(silent=True) or {}
+    tx_id = data.get("transaction_id")
+    otp_code = data.get("otp")
+    
+    try:
+        tx = UserService.confirm_transfer_service(current_user, tx_id, otp_code)
+        return jsonify({
+            "success": True, 
+            "message": "Chuyển tiền thành công!",
+            "redirect": url_for("user.profile_page") # Hoặc trang lịch sử GD
+        }), 200
+    except ValueError as ve:
+        return jsonify({"success": False, "message": str(ve)}), 400
+    
+
+
+@user_bp.route('/transactions/resend-otp', methods=['POST'])
+@login_required
+def resend_otp_transactions():
+    data = request.get_json(silent=True) or {}
+    transaction_id = data.get("transaction_id")
+    
+    try:
+        # Gọi xuống tầng Service để xử lý
+        UserService.resend_transaction_otp_service(current_user, transaction_id)
+        
+        return jsonify({
+            "success": True, 
+            "message": "Đã gửi lại mã OTP vào email của bạn."
+        }), 200
+        
+    except ValueError as ve:
+        return jsonify({
+            "success": False, 
+            "message": str(ve)
+        }), 400
+        
+    except Exception as e:
+        # app.logger.error(f"Lỗi gửi lại OTP giao dịch: {e}")
+        return jsonify({
+            "success": False, 
+            "message": "Lỗi kết nối máy chủ, không thể gửi email lúc này."
+        }), 500
+
+# ================================================================================================
+
+@user_bp.route('/api/check-account', methods=['GET'])
+@login_required
+def check_account_api():
+    """API lấy thông tin người nhận khi gõ số tài khoản (Gọi bằng JS)"""
+    account_number = request.args.get('account_number', '').strip()
+    
+    try:
+        info = UserService.check_account_service(account_number)
+        return jsonify({
+            "success": True, 
+            "full_name": info["full_name"],
+            "username": info["username"]
+        }), 200
+        
+    except ValueError as ve:
+        return jsonify({"success": False, "message": str(ve)}), 400
+        
+    except Exception as e:
+        # app.logger.error(f"Check account error: {e}")
+        return jsonify({"success": False, "message": "Lỗi máy chủ nội bộ."}), 500
+

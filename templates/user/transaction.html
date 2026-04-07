@@ -1,0 +1,173 @@
+{% extends "base_auth.html" %} {% block title %}Chuyển tiền nội bộ{% endblock %}
+
+{% block content %}
+<div class="min-vh-90 d-flex align-items-center justify-content-center bg-light">
+
+    <div class="card shadow-lg border-0 p-4"
+        style="border-radius: 20px; max-width: 420px; width: 100%;">
+
+        <div class="text-center mb-4">
+            <h3 class="fw-bold mb-1">Chuyển tiền</h3>
+            <p class="text-muted mb-0">
+                Nhập thông tin người nhận và số tiền
+            </p>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label small text-muted fw-bold">Số tài khoản người nhận</label>
+            <input type="text"
+                id="receiverAccount"
+                class="form-control rounded-3"
+                style="border-radius: 10px !important;"
+                placeholder="Nhập số tài khoản...">
+            <div id="receiverNameFeedback" class="small mt-2 fw-bold" style="min-height: 20px;"></div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label small text-muted fw-bold">Số tiền cần chuyển (VND)</label>
+            <input type="number"
+                id="amountInput"
+                class="form-control rounded-3"
+                style="border-radius: 10px !important;"
+                placeholder="0"
+                min="1000">
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label small text-muted fw-bold">Lời nhắn (Không bắt buộc)</label>
+            <textarea id="descriptionInput" 
+                class="form-control rounded-3" 
+                rows="2" 
+                style="border-radius: 10px !important;"
+                placeholder="Nhập nội dung chuyển tiền..."></textarea>
+        </div>
+
+        <button id="transferBtn"
+            class="btn btn-primary border w-100 rounded-3 py-2 fw-bold"
+            style="border-radius: 10px !important;"
+            disabled> Tiếp tục
+        </button>
+
+    </div>
+
+</div>
+
+<script>
+const csrfToken = "{{ csrf_token() }}";
+let typingTimer;
+const doneTypingInterval = 500; // Đợi 0.5s sau khi ngừng gõ mới call API
+
+const receiverAccountInput = document.getElementById("receiverAccount");
+const receiverNameFeedback = document.getElementById("receiverNameFeedback");
+const transferBtn = document.getElementById("transferBtn");
+const amountInput = document.getElementById("amountInput");
+const descriptionInput = document.getElementById("descriptionInput");
+
+// Trạng thái hợp lệ của người nhận
+let isValidReceiver = false; 
+
+// 1. Bắt sự kiện khi người dùng gõ số tài khoản (Debounce)
+receiverAccountInput.addEventListener('input', function () {
+    clearTimeout(typingTimer);
+    isValidReceiver = false;
+    transferBtn.disabled = true; // Khóa nút chuyển tiền
+    receiverNameFeedback.innerHTML = '<span class="text-muted"><i class="spinner-border spinner-border-sm"></i> Đang tìm kiếm...</span>';
+    
+    if (receiverAccountInput.value.trim()) {
+        typingTimer = setTimeout(checkAccount, doneTypingInterval);
+    } else {
+        receiverNameFeedback.innerHTML = '';
+    }
+});
+
+// Hàm gọi API kiểm tra số tài khoản
+async function checkAccount() {
+    const accountNum = receiverAccountInput.value.trim();
+    
+    try {
+        // Gửi GET request kèm query parameter
+        const res = await fetch(`/users/api/check-account?account_number=${accountNum}`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            // Nếu tìm thấy -> Hiển thị tên màu xanh và mở nút bấm
+            receiverNameFeedback.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill"></i> Tên người nhận: <b>${data.full_name} (@${data.username})</b></span>`;
+            isValidReceiver = true;
+            transferBtn.disabled = false;
+        } else {
+            // Không tìm thấy -> Hiển thị lỗi màu đỏ
+            receiverNameFeedback.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle-fill"></i> ${data.message || "Không tìm thấy tài khoản"}</span>`;
+        }
+    } catch (error) {
+        console.error("Lỗi:", error);
+        receiverNameFeedback.innerHTML = `<span class="text-danger">Lỗi kết nối máy chủ</span>`;
+    }
+}
+
+// 2. Bắt sự kiện bấm nút Chuyển tiền
+transferBtn.addEventListener("click", async function () {
+    const accountNum = receiverAccountInput.value.trim();
+    const amount = amountInput.value.trim();
+    const description = descriptionInput.value.trim();
+
+    if (!isValidReceiver) {
+        showMessage("warning", "Cảnh báo", "Vui lòng nhập đúng tài khoản người nhận");
+        return;
+    }
+
+    if (!amount || isNaN(amount) || amount <= 0) {
+        showMessage("warning", "Cảnh báo", "Vui lòng nhập số tiền hợp lệ");
+        return;
+    }
+
+    // Hiển thị loading cho nút
+    const originalBtnText = transferBtn.innerHTML;
+    transferBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
+    transferBtn.disabled = true;
+
+    try {
+        const res = await fetch("/users/transactions/create", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify({
+                receiver_account: accountNum,
+                amount: amount,
+                description: description
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            // 1. Đổi câu thông báo cho hợp lý với luồng mới
+            showMessage("success", "Thông báo", "Mã OTP đã được gửi. Đang chuyển hướng...");
+            
+            // 2. Tự động Redirect sang trang OTP dựa vào URL backend trả về
+            if (data.redirect) {
+                setTimeout(() => {
+                    window.location.href = data.redirect;
+                }, 1500); // Đợi 1.5s để user kịp nhìn thấy thông báo rồi mới chuyển trang
+            }
+        } else {
+            // Báo lỗi nếu backend trả về success = false (VD: không đủ số dư)
+            showMessage("error", "Lỗi", data.message || "Khởi tạo giao dịch thất bại");
+        }
+    } catch (err) {
+        console.error(err);
+        showMessage("error", "Lỗi", "Lỗi kết nối máy chủ");
+    } finally {
+        transferBtn.innerHTML = originalBtnText;
+        if (isValidReceiver) transferBtn.disabled = false;
+    }
+});
+</script>
+{% endblock %}

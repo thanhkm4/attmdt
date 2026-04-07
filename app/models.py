@@ -133,3 +133,60 @@ class FailedLoginAttempt(db.Model):
     ip_address = db.Column(db.String(45), nullable=False)
     user_agent = db.Column(db.String(255), nullable=True)
     attempt_time = db.Column(db.DateTime, default=get_vietnam_time)
+
+
+class AccountBalance(db.Model):
+    __tablename__ = 'account_balances'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+    account_number = db.Column(db.String(16), unique=True, nullable=False, default=lambda: ''.join([str(__import__('random').randint(0,9)) for _ in range(16)]))
+    balance = db.Column(db.Numeric(18, 2), nullable=False, default=0.00)
+    currency = db.Column(db.String(3), default='VND')
+    is_frozen = db.Column(db.Boolean, default=False)
+    updated_at = db.Column(db.DateTime, default=get_vietnam_time, onupdate=get_vietnam_time)
+    created_at = db.Column(db.DateTime, default=get_vietnam_time)
+
+    user = db.relationship('User', backref=db.backref('account', uselist=False))
+
+    def can_transfer(self, amount):
+        """Kiểm tra có đủ số dư và tài khoản không bị đóng băng"""
+        return not self.is_frozen and self.balance >= amount
+
+    def __repr__(self):
+        return f'<AccountBalance user_id={self.user_id} balance={self.balance}>'
+
+
+class TransactionLog(db.Model):
+    __tablename__ = 'transaction_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    transaction_id = db.Column(db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    amount = db.Column(db.Numeric(18, 2), nullable=False)
+    description = db.Column(db.String(255), nullable=True)
+
+    # Trạng thái: PENDING → SUCCESS / FAILED / CANCELLED
+    status = db.Column(db.String(20), default='PENDING')
+
+    # 2FA tracking
+    requires_2fa = db.Column(db.Boolean, default=True)
+    two_fa_verified = db.Column(db.Boolean, default=False)
+    two_fa_method = db.Column(db.String(10), nullable=True)  # 'otp' | 'totp' | None
+
+    # Snapshot số dư tại thời điểm giao dịch (để audit)
+    sender_balance_before = db.Column(db.Numeric(18, 2))
+    sender_balance_after = db.Column(db.Numeric(18, 2))
+    receiver_balance_before = db.Column(db.Numeric(18, 2))
+    receiver_balance_after = db.Column(db.Numeric(18, 2))
+
+    ip_address = db.Column(db.String(45), nullable=True)
+    created_at = db.Column(db.DateTime, default=get_vietnam_time)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_transactions')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_transactions')
+
+    def __repr__(self):
+        return f'<Transaction {self.transaction_id} {self.status} {self.amount}>'

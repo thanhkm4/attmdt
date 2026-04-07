@@ -5,9 +5,13 @@ import random
 import string
 from sqlalchemy import or_
 from app.extensions import db
-from app.models import User
+from app.models import User, AccountBalance, TransactionLog
 from app.logs.logs_app import log_audit, log_system
 from flask_login import logout_user
+from app.auth.mail_service import send_otp_email # Nhớ import hàm gửi mail của bạn
+from app.extensions import redis_client
+from werkzeug.security import generate_password_hash, check_password_hash
+   
 
 
 # Import các hàm check quyền cơ bản (Bạn tự điều chỉnh lại policy cho phù hợp với model mới)
@@ -98,12 +102,24 @@ class UserService:
                 email=data["email"],
                 role="user",  # cố định
                 is_active=False,
-                email_verified=False
+                email_verified=False,
+                
             )
 
             user.set_password(data["password"])
 
             db.session.add(user)
+            db.session.flush()
+            
+            new_account = AccountBalance(
+                user_id=user.id,
+                balance=100000000.00,  # 100,000,000 VND
+                currency='VND',
+                is_frozen=False
+            )
+            db.session.add(new_account)
+
+            # Chốt cả 2 thao tác (tạo User + tạo Account) vào database
             db.session.commit()
 
             return user
@@ -215,6 +231,8 @@ class UserService:
         if actor.id != user.id and actor.role != "admin":
             raise PermissionError("Không có quyền xem thông tin người dùng này.")
 
+        account = user.account
+
         return {
             "id": user.id,
             "username": user.username,
@@ -228,7 +246,12 @@ class UserService:
             "biography": user.biography,
             "avatar": user.avatar,
             "two_factor_enabled": True if user.two_factor_method else False,
-            "two_factor_method": user.two_factor_method
+            "two_factor_method": user.two_factor_method,
+            
+            # --- BỔ SUNG THÔNG TIN SỐ DƯ ---
+            "balance": float(account.balance) if account else 0.0,
+            "currency": account.currency if account else "VND",
+            "account_number": account.account_number if account else None
         }
 
     @staticmethod
@@ -301,3 +324,172 @@ class UserService:
         db.session.commit()
         logout_user()
         return True
+    
+    
+    # =========================================================================
+    # 2. GIAO DỊCH & TÀI KHOẢN (TRANSACTIONS)
+    # =========================================================================
+
+    @staticmethod
+    def check_account_service(account_number: str):
+        """Truy vấn tên người dùng dựa vào số tài khoản"""
+        if not account_number:
+            raise ValueError("Vui lòng cung cấp số tài khoản.")
+
+        account = AccountBalance.query.filter_by(account_number=account_number).first()
+        if not account:
+            raise ValueError("Không tìm thấy số tài khoản này trong hệ thống.")
+
+        user = account.user
+        if not user:
+            raise ValueError("Tài khoản không hợp lệ (Không có chủ sở hữu).")
+
+        return {
+            "full_name": user.full_name or user.username,
+            "username": user.username
+        }
+
+    #===========================================================================
+
+    @staticmethod
+    def initiate_transfer_service(sender_actor, data: dict):
+        """Bước 1: Khởi tạo giao dịch PENDING và gửi OTP (Sử dụng Redis)"""
+        receiver_account_num = data.get("receiver_account")
+        amount = data.get("amount")
+        description = data.get("description", "")
+
+        if not receiver_account_num or not amount:
+            raise ValueError("Thiếu thông tin người nhận hoặc số tiền.")
+
+        amount = float(amount) # Nhớ đổi thành Decimal như góp ý ở trên nếu cần nhé
+        if amount <= 0:
+            raise ValueError("Số tiền chuyển phải lớn hơn 0.")
+
+        sender_account = AccountBalance.query.filter_by(user_id=sender_actor.id).first()
+        if not sender_account or not sender_account.can_transfer(amount):
+            raise ValueError("Số dư không đủ hoặc tài khoản đang bị khóa.")
+
+        receiver_account = AccountBalance.query.filter_by(account_number=receiver_account_num).first()
+        if not receiver_account or sender_account.id == receiver_account.id:
+            raise ValueError("Tài khoản người nhận không hợp lệ.")
+
+        try:
+            # 1. Tạo lịch sử giao dịch trạng thái PENDING
+            tx_log = TransactionLog(
+                sender_id=sender_actor.id,
+                receiver_id=receiver_account.user_id,
+                amount=amount,
+                description=description,
+                status="PENDING",
+                requires_2fa=True, 
+                two_fa_verified=False
+            )
+            db.session.add(tx_log)
+            db.session.commit()
+
+            # 2. Tạo mã OTP và lưu vào Redis (Thay cho DB)
+            otp_code = UserService._generate_otp_code()
+            hashed_otp = generate_password_hash(otp_code)
+            key = f"otp:transfer:{sender_actor.id}"
+            
+            # Set thời gian sống (TTL) là 300s (5 phút)
+            redis_client.setex(key, 300, hashed_otp)
+
+            # 3. Gửi email OTP
+            send_otp_email(sender_actor, otp_code)
+
+            return tx_log
+
+        except Exception as e:
+            db.session.rollback()
+            raise e
+
+
+    @staticmethod
+    def confirm_transfer_service(sender_actor, transaction_id, otp_code):
+        """Bước 2: Xác thực OTP từ Redis và thực thi chuyển tiền"""
+        
+        # 1. Check OTP từ Redis
+        key = f"otp:transfer:{sender_actor.id}"
+        stored_hash = redis_client.get(key)
+
+        if not stored_hash or not check_password_hash(stored_hash, otp_code):
+            raise ValueError("Mã OTP không chính xác hoặc đã hết hạn.")
+
+        # 2. Lấy giao dịch đang chờ
+        tx = TransactionLog.query.filter_by(
+            transaction_id=transaction_id, 
+            sender_id=sender_actor.id, 
+            status="PENDING"
+        ).first()
+        
+        if not tx:
+            raise ValueError("Không tìm thấy giao dịch hoặc giao dịch đã bị xử lý.")
+
+        try:
+            # 3. Khóa dòng dữ liệu (Chống double-spending)
+            sender_account = AccountBalance.query.filter_by(user_id=sender_actor.id).with_for_update().first()
+            receiver_account = AccountBalance.query.filter_by(user_id=tx.receiver_id).with_for_update().first()
+
+            if not sender_account.can_transfer(tx.amount):
+                tx.status = "FAILED"
+                db.session.commit()
+                raise ValueError("Số dư hiện tại không đủ để hoàn tất giao dịch.")
+
+            # 4. Thực hiện biến động số dư
+            tx.sender_balance_before = sender_account.balance
+            tx.receiver_balance_before = receiver_account.balance
+
+            sender_account.balance -= tx.amount
+            receiver_account.balance += tx.amount
+
+            tx.sender_balance_after = sender_account.balance
+            tx.receiver_balance_after = receiver_account.balance
+            
+            # 5. Cập nhật trạng thái
+            tx.status = "SUCCESS"
+            tx.two_fa_verified = True
+            
+            db.session.commit()
+
+            # 6. Hủy OTP trong Redis sau khi dùng xong (Xóa key)
+            redis_client.delete(key)
+            
+            return tx
+
+        except Exception as e:
+            db.session.rollback()
+            raise e
+
+
+    @staticmethod
+    def resend_transaction_otp_service(sender_actor, transaction_id):
+        """Xử lý gửi lại OTP giao dịch (Lưu Redis)"""
+        
+        if not transaction_id:
+            raise ValueError("Thiếu mã giao dịch.")
+
+        tx = TransactionLog.query.filter_by(
+            transaction_id=transaction_id, 
+            sender_id=sender_actor.id, 
+            status="PENDING"
+        ).first()
+
+        if not tx:
+            raise ValueError("Không tìm thấy giao dịch hoặc giao dịch đã bị hủy.")
+
+        try:
+            # Ghi đè OTP mới vào Redis
+            new_otp_code = UserService._generate_otp_code()
+            hashed_otp = generate_password_hash(new_otp_code)
+            key = f"otp:transfer:{sender_actor.id}"
+            redis_client.setex(key, 300, hashed_otp)
+
+            # Gửi lại email
+            send_otp_email(sender_actor, new_otp_code)
+            
+            return True
+
+        except Exception as e:
+            # Xử lý lỗi hệ thống nếu có
+            raise e

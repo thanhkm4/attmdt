@@ -16,3 +16,11 @@ __pycache__/
 
 # 5. Bỏ qua thư mục dữ liệu local (nếu bạn map volume ra ngoài)
 logs/
+testredis.py
+seed.py
+t.txt
+Dockerfile
+create_admin.py
+ATTMDT.rar
+.dockerignore
+migrations/
